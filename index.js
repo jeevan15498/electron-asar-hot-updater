@@ -8,11 +8,11 @@ const admZip = require('adm-zip')
 // Yes, it's weird, but we need the trailing slash after the .asar
 // so we can read paths "inside" it, e.g. the package.json, where we look
 // for our current version
-const AppPath = app.getAppPath() + '/'
-const AppPathFolder = AppPath.slice(0, AppPath.indexOf('app.asar'))
+const AppPath = app.getAppPath() + '\\'
+const AppPathFolder = AppPath.slice(0, AppPath.indexOf('app.asar')) + '\\'
 const AppAsar = AppPath.slice(0, -1)
 const WindowsUpdater =
-  AppPath.slice(0, AppPath.indexOf('resources')) + 'updater.exe'
+  AppPath.slice(0, AppPath.indexOf('resources')) + '\\updater.exe'
 
 const errors = [
   'version_not_specified',
@@ -68,9 +68,26 @@ var Updater = {
 
     // Put it into a file
     if (this.setup.logFile) {
-      console.log('%s + %s + %s', AppPathFolder, this.setup.logFile, line)
-      FileSystem.appendFileSync(AppPathFolder + this.setup.logFile, line + '\n')
+      console.log('%s + %s + %s', AppPathFolder + "\\", this.setup.logFile, line)
+      FileSystem.appendFileSync(AppPathFolder + "\\" + this.setup.logFile, line + '\n')
     }
+  },
+
+  /**
+   * Compare Versions
+   * @param {new version} v1
+   * @param {old version} v2
+   * */
+  compareVersions: function (v1, v2) {
+    v1 = v1.split(".");
+    v2 = v2.split(".");
+    var longestLength = v1.length > v2.length ? v1.length : v2.length;
+    for (var i = 0; i < longestLength; i++) {
+      if (v1[i] != v2[i]) {
+        return v1 > v2 ? 1 : -1;
+      }
+    }
+    return 0;
   },
 
   /**
@@ -96,8 +113,9 @@ var Updater = {
 
     // Get the current version
     debugger
-    var packageInfo = require(AppPath + 'package.json')
-    this.log(packageInfo.version)
+    // Error FIX: Cannot find module 'F:\Path\package.json'
+    var packageInfo = require('../../dist_electron/package.json')
+    this.log("Current Version: "+ packageInfo.version)
 
     // If the version property not specified
     if (!packageInfo.version) {
@@ -108,7 +126,7 @@ var Updater = {
 
       return false
     }
-
+    var that = this
     request(
       {
         url: this.setup.api,
@@ -139,8 +157,7 @@ var Updater = {
               throw false
             }
 
-            // Update available
-            if (response.source) {
+            if (that.compareVersions(response.last, packageInfo.version) === 1) {
               Updater.log('Update available: ' + response.last)
 
               // Store the response
@@ -149,7 +166,7 @@ var Updater = {
               // Ask user for confirmation
               Updater.end(undefined, body)
             } else {
-              Updater.log('No updates available')
+              Updater.log('No updates available: '+ response.last)
               Updater.end(2)
 
               return false
@@ -178,7 +195,7 @@ var Updater = {
 
     var url = this.update.source, fileName = 'update.asar'
 
-    this.log('Downloading ' + url)
+    this.log('Downloading Asar File: ' + url)
 
     progress(
       request(

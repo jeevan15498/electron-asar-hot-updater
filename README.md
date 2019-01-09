@@ -1,5 +1,5 @@
-# electron-asar-hot-updater
-[![NPM](https://nodei.co/npm/electron-asar-hot-updater.png)](https://nodei.co/npm/electron-asar-hot-updater/)
+# electron-asar-hot-updater-v1
+[![NPM](https://nodei.co/npm/electron-asar-hot-updater-v1.png)](https://nodei.co/npm/electron-asar-hot-updater-v1/)
 ## What it is
 > A NodeJs module for Electron, that handles app.asar updates. Reconstruction of `electron-asar-updater`
 
@@ -21,96 +21,111 @@ http://electron.atom.io/docs/v0.33.0/api/auto-updater/
 * If you want to `check` the version on the `server side` or on the `client side`.
 * If you want to use `zip` to compress files, make your ASAR file smaller.
 
+## Add New Function and Fix Issues
+
+- Fix App Paths
+- Error Fix: Cannot find module `'F:\Path\package.json'`
+- Fix log file path
+- Add New Function `Compare Versions`
+- Update Method: Check Update available
+
 ---
 
 ## Installation
+
 ```bash
-$ npm install --save electron-asar-hot-updater
+$ npm install --save electron-asar-hot-updater-v1
+$ npm install --save electron-asar-hot-updater-v1@version
 ```
+
 Now, inside the *main.js* file, call it like this:
+
 ```js
 const { app, dialog } = require('electron');
-const EAU = require('electron-asar-hot-updater');
+const EAU = require('electron-asar-hot-updater-v1');
 
 app.on('ready', function () {
   // Initiate the module
   EAU.init({
-    'api': 'http://...', // The API EAU will talk to
+    'api': 'request.json', // The API EAU will talk to
     'server': false // Where to check. true: server side, false: client side, default: true.
   });
 
   EAU.check(function (error, last, body) {
     if (error) {
       if (error === 'no_update_available') { return false; }
-      dialog.showErrorBox('info', error)
+      console.error(error)
       return false
-    }
+    } else {
+      if (body !== undefined) {
+        const options = {
+          type: 'info',
+          title: 'A new version available',
+          message: "v" + body.version,
+          detail: "A new version available. Click the button below to download the latest version.",
+          buttons: ["Update New Version"],
+          cancelId: 1
+        }
+        dialog.showMessageBox(options, function (index) {
+          if (index === 0) {
+            EAU.progress(function (state) {
+                // The state is an object that looks like this:
+                /** First state: Response */
+                // {
+                //   "time":{
+                //     "elapsed":0.077,
+                //     "remaining":null
+                //   },
+                //   "speed":null,
+                //   "percent":0.000275581753514208,
+                //   "size":{
+                //     "total":36990838,
+                //     "transferred":10194
+                //   }
+                // }
 
-    EAU.progress(function (state) {
-      // The state is an object that looks like this:
-      // {
-      //     percent: 0.5,               
-      //     speed: 554732,              
-      //     size: {
-      //         total: 90044871,        
-      //         transferred: 27610959   
-      //     },
-      //     time: {
-      //         elapsed: 36.235,        
-      //         remaining: 81.403       
-      //     }
-      // }
-    })
+                /** Last state: Response */
 
-    EAU.download(function (error) {
-      if (error) {
-        dialog.showErrorBox('info', error)
-        return false
+                // {
+                //   "time":{
+                //   "elapsed":63.327,
+                //   "remaining":0.249
+                //   },
+                //   "speed":581835.2045730889,
+                //   "percent":0.996081191780516,
+                //   "size":{
+                //     "total":36990838,
+                //     "transferred":36845878
+                //   }
+                // }
+            })
+
+            EAU.download(function (error) {
+                if (error) {
+                    dialog.showErrorBox('info', error)
+                    return false
+                }
+                dialog.showErrorBox('info', 'App updated successfully! Restart it please.')
+            })
+          }
+        }
       }
-      dialog.showErrorBox('info', 'App updated successfully! Restart it please.')
-    })
-
+    }
   })
 })
 ```
 
-## The update server
-The server can return the version details, for example
-```js
-const express = require('express')
-var bodyParser = require('body-parser');
-const app = express()
+API Request Response
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-
-var desktop_app_version = '1.0.0';
-var desktop_app_URL = 'http://127.0.0.1:8083/update.asar' // or ../update.zip
-
-app.post('/update', function (req, res) {
-  if(req.body && req.body.current != desktop_app_version){ // check for server side
-    res.write(JSON.stringify( {"last": desktop_app_version, "source": desktop_app_URL} ).replace(/[\/]/g, '\\/') );
-  }else{
-    res.write(JSON.stringify( {"last": desktop_app_version} ).replace(/[\/]/g, '\\/') );
-  }
-  res.end();
-});
-
-app.listen(3000)
-console.log('run port: 3000')
 ```
-Or you can return version information for client to check
-```js
-app.post('/update', function (req, res) {
-  res.write(JSON.stringify( {
+{
     "name": "app",
     "version": "0.0.1",
     "asar": "http://127.0.0.1:8083/update.asar",
     "info": "1.fix bug\n2.feat..."
-  } ).replace(/[\/]/g, '\\/') );
-  res.end();
-});
+}
 ```
+
 If you use a zip file, the plug-in will unzip the file after downloading it, which will make your update file smaller, but you must make sure that `update.asar` is at the root of the zip package:
 ```
 ── update.zip
@@ -119,6 +134,4 @@ If you use a zip file, the plug-in will unzip the file after downloading it, whi
 
 ## License
 
-:smiley: if you have any comments or wish to contribute to this project, you are welcome to submit Issues or PR.
-
-MIT - [yansenlei](https://github.com/yansenlei)
+[yansenlei](https://github.com/yansenlei/electron-asar-hot-updater)
